@@ -1,0 +1,23 @@
+{
+  "name": "achados-perdidos-valdorio",
+  "version": "1.0.0",
+  "description": "Portal de Achados e Perdidos Digital — PAP TISO24 — Escola Profissional Val do Rio",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "author": "Salvador Carvalho & Max Oliveira",
+  "license": "ISC",
+  "dependencies": {
+    "@fontsource/plus-jakarta-sans": "^5.3.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^18.0.7",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "lucide": "^1.56.0",
+    "multer": "^2.4.0",
+    "mysql2": "^3.24.6",
+    "qrcode": "^1.5.4"
+  }
+}

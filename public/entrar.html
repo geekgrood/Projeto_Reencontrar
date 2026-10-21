@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar — Achados & Perdidos</title>
+  <link rel="stylesheet" href="/css/estilo.css">
+</head>
+<body>
+  <header class="topo" id="topo"></header>
+  <main class="contentor pagina">
+    <div class="entrar">
+      <h1 style="text-align:center">Bem-vindo de volta</h1>
+      <p class="subtitulo" style="text-align:center">Usa o teu email da escola <b>@valdorio.net</b></p>
+
+      <div class="painel">
+        <div class="segmentos separadores" id="separadores">
+          <button type="button" data-modo="login" class="ativo">Entrar</button>
+          <button type="button" data-modo="registo">Criar conta</button>
+        </div>
+        <form id="form" style="display:grid;gap:14px">
+          <div class="campo so-registo oculto"><label for="nome">Nome</label><input id="nome" autocomplete="name"></div>
+          <div class="campo"><label for="email">Email da escola</label><input id="email" type="email" placeholder="nome@valdorio.net" autocomplete="email" required></div>
+          <div class="campo"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required></div>
+          <div class="campo so-registo oculto"><label for="turma">Turma <span class="ajuda">(alunos)</span></label><input id="turma" placeholder="Ex.: TISO24"></div>
+          <div id="aviso"></div>
+          <button class="botao" type="submit" id="botao">Entrar</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="/vendor/lucide/lucide.min.js"></script>
+  <script src="/js/comum.js"></script>
+  <script>
+    desenharTopo('');
+    let modo = 'login';
+
+    document.querySelectorAll('#separadores button').forEach(b => b.addEventListener('click', () => {
+      modo = b.dataset.modo;
+      document.querySelectorAll('#separadores button').forEach(x => x.classList.toggle('ativo', x === b));
+      document.querySelectorAll('.so-registo').forEach(c => c.classList.toggle('oculto', modo === 'login'));
+      document.getElementById('botao').textContent = modo === 'login' ? 'Entrar' : 'Criar conta';
+    }));
+
+    document.getElementById('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const corpo = {
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+        nome: document.getElementById('nome').value,
+        turma: document.getElementById('turma').value
+      };
+      try {
+        const sessao = await api('/auth/' + modo, { method: 'POST', body: JSON.stringify(corpo) });
+        Sessao.guardar(sessao);
+        location.href = new URLSearchParams(location.search).get('voltar') || '/';
+      } catch (erro) {
+        document.getElementById('aviso').innerHTML = `<div class="mensagem erro">${seguro(erro.message)}</div>`;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Achados & Perdidos — Val do Rio</title>
+  <link rel="stylesheet" href="/css/estilo.css">
+</head>
+<body>
+  <header class="topo" id="topo"></header>
+
+  <section class="heroi">
+    <div class="contentor">
+      <h1>Perdeste alguma coisa na escola? <em>Encontra-a aqui.</em></h1>
+      <p>Publica o que perdeste ou encontraste e acompanha a devolução até à secretaria — tudo num só sítio.</p>
+      <form class="pesquisa" id="form-pesquisa">
+        <i data-lucide="search"></i>
+        <input id="q" type="search" placeholder="Procura por casaco, calculadora, chaves…" autocomplete="off">
+        <button class="botao" type="submit">Procurar</button>
+      </form>
+    </div>
+  </section>
+
+  <main class="contentor">
+    <div class="numeros">
+      <div class="numero"><span class="bola" style="background:var(--coral-claro);color:var(--coral)"><i data-lucide="circle-help"></i></span><div><strong id="n-perdidos">–</strong><span>objetos perdidos</span></div></div>
+      <div class="numero"><span class="bola" style="background:var(--verde-claro);color:var(--verde-escuro)"><i data-lucide="hand-heart"></i></span><div><strong id="n-encontrados">–</strong><span>à espera do dono</span></div></div>
+      <div class="numero"><span class="bola" style="background:#e6eef7;color:var(--azul-2)"><i data-lucide="party-popper"></i></span><div><strong id="n-devolvidos">–</strong><span>já devolvidos</span></div></div>
+    </div>
+
+    <div class="barra-filtros">
+      <div class="segmentos" id="tipo">
+        <button data-valor="" class="ativo">Todos</button>
+        <button data-valor="perdido">Perdidos</button>
+        <button data-valor="encontrado">Encontrados</button>
+      </div>
+      <select id="categoria"><option value="">Todas as categorias</option></select>
+      <select id="local"><option value="">Todos os locais</option></select>
+    </div>
+
+    <div class="titulo-seccao"><h2>Publicações recentes</h2><span id="contagem"></span></div>
+    <div class="grelha" id="lista"></div>
+  </main>
+
+  <footer class="rodape"><div class="contentor">PAP 2026 · TISO24 · Salvador Carvalho &amp; Max Oliveira</div></footer>
+
+  <script src="/vendor/lucide/lucide.min.js"></script>
+  <script src="/js/comum.js"></script>
+  <script>
+    desenharTopo('inicio');
+    let tipoAtual = '';
+
+    async function carregarFiltros() {
+      const [categorias, locais] = await Promise.all([api('/categorias'), api('/locais')]);
+      categorias.forEach(c => document.getElementById('categoria').add(new Option(c.nome, c.id)));
+      locais.forEach(l => document.getElementById('local').add(new Option(l.nome, l.id)));
+    }
+
+    async function carregarEstatisticas() {
+      const e = await api('/estatisticas');
+      document.getElementById('n-perdidos').textContent = e.perdidos ?? 0;
+      document.getElementById('n-encontrados').textContent = e.encontrados ?? 0;
+      document.getElementById('n-devolvidos').textContent = e.devolvidos ?? 0;
+    }
+
+    async function carregarItens() {
+      const params = new URLSearchParams();
+      const q = document.getElementById('q').value.trim();
+      const categoria = document.getElementById('categoria').value;
+      const local = document.getElementById('local').value;
+      if (q) params.append('q', q);
+      if (tipoAtual) params.append('tipo', tipoAtual);
+      if (categoria) params.append('categoria', categoria);
+      if (local) params.append('local', local);
+
+      const itens = await api('/itens?' + params);
+      document.getElementById('contagem').textContent = `${itens.length} resultado${itens.length === 1 ? '' : 's'}`;
+      document.getElementById('lista').innerHTML = itens.length
+        ? itens.map(cartaoItem).join('')
+        : '<div class="vazio">Nada encontrado. Experimenta outra pesquisa ou <a href="/publicar.html">publica um aviso</a>.</div>';
+      desenharIcones();
+    }
+
+    // Botões Todos / Perdidos / Encontrados
+    document.querySelectorAll('#tipo button').forEach(b => b.addEventListener('click', () => {
+      document.querySelectorAll('#tipo button').forEach(x => x.classList.remove('ativo'));
+      b.classList.add('ativo');
+      tipoAtual = b.dataset.valor;
+      carregarItens();
+    }));
+    document.getElementById('categoria').addEventListener('change', carregarItens);
+    document.getElementById('local').addEventListener('change', carregarItens);
+    document.getElementById('form-pesquisa').addEventListener('submit', e => { e.preventDefault(); carregarItens(); });
+
+    carregarFiltros(); carregarEstatisticas(); carregarItens();
+  </script>
+</body>
+</html>

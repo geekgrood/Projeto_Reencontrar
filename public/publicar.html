@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Publicar — Achados & Perdidos</title>
+  <link rel="stylesheet" href="/css/estilo.css">
+</head>
+<body>
+  <header class="topo" id="topo"></header>
+  <main class="contentor pagina" style="max-width:780px">
+    <h1>Publicar um aviso</h1>
+    <p class="subtitulo">Quanto mais pormenores deres, mais fácil é encontrar o dono.</p>
+
+    <form class="painel formulario" id="form">
+      <div class="campo largo escolha-tipo">
+        <div>
+          <input type="radio" name="tipo" id="t-perdido" value="perdido" checked>
+          <label for="t-perdido"><span class="ic" style="background:var(--coral-claro);color:var(--coral)"><i data-lucide="circle-help"></i></span><span>Perdi um objeto<small>Ajuda os outros a reconhecê-lo</small></span></label>
+        </div>
+        <div>
+          <input type="radio" name="tipo" id="t-encontrado" value="encontrado">
+          <label for="t-encontrado"><span class="ic" style="background:var(--verde-claro);color:var(--verde-escuro)"><i data-lucide="hand-heart"></i></span><span>Encontrei um objeto<small>Entrega-o depois na secretaria</small></span></label>
+        </div>
+      </div>
+
+      <div class="campo largo"><label for="titulo">O que é?</label><input id="titulo" name="titulo" required maxlength="120" placeholder="Ex.: Casaco preto com capuz"></div>
+      <div class="campo"><label for="categoria">Categoria</label><select id="categoria" name="categoria_id" required></select></div>
+      <div class="campo"><label for="local">Onde?</label><select id="local" name="local_id"><option value="">Não sei</option></select></div>
+
+      <!-- Só aparece para Roupa e Calçado -->
+      <div class="campo oculto" id="campo-tamanho"><label for="tamanho">Tamanho</label><select id="tamanho" name="tamanho"></select></div>
+      <div class="campo"><label for="cor">Cor</label><input id="cor" name="cor" maxlength="30" placeholder="Ex.: Preto"></div>
+      <div class="campo"><label for="data">Quando?</label><input id="data" name="data_ocorrencia" type="date" required></div>
+
+      <div class="campo largo"><label for="descricao">Descrição</label><textarea id="descricao" name="descricao" rows="3" placeholder="Marca, autocolantes, onde estava exatamente…"></textarea></div>
+
+      <div class="campo largo">
+        <label>Fotografia <span class="ajuda">(opcional, máx. 5 MB)</span></label>
+        <label class="zona-foto" for="imagem"><div id="previa"><i data-lucide="image-plus" style="width:32px;height:32px"></i><br>Clica para escolher uma foto</div></label>
+        <input id="imagem" name="imagem" type="file" accept="image/jpeg,image/png,image/webp" class="oculto">
+      </div>
+
+      <div class="campo largo" id="aviso"></div>
+      <div class="campo largo"><button class="botao" type="submit"><i data-lucide="send"></i> Publicar aviso</button></div>
+    </form>
+  </main>
+
+  <script src="/vendor/lucide/lucide.min.js"></script>
+  <script src="/js/comum.js"></script>
+  <script>
+    desenharTopo('publicar');
+    if (!Sessao.obter()) location.href = '/entrar.html?voltar=/publicar.html';
+
+    // Tamanhos standard usados em Portugal
+    const TAMANHOS = {
+      Roupa:   ['XS', 'S', 'M', 'L', 'XL', 'XXL', '34', '36', '38', '40', '42', '44', '46', '48', 'Único', 'Não sei'],
+      'Calçado': ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', 'Não sei']
+    };
+    document.getElementById('data').valueAsDate = new Date();
+
+    let categorias = [], locais = [];
+    (async () => {
+      [categorias, locais] = await Promise.all([api('/categorias'), api('/locais')]);
+      categorias.forEach(c => document.getElementById('categoria').add(new Option(c.nome, c.id)));
+      locais.forEach(l => document.getElementById('local').add(new Option(l.nome, l.id)));
+      atualizarTamanho();
+    })();
+
+    // Mostra o campo "Tamanho" só quando a categoria tem tamanhos
+    function atualizarTamanho() {
+      const cat = categorias.find(c => c.id == document.getElementById('categoria').value);
+      const campo = document.getElementById('campo-tamanho');
+      const select = document.getElementById('tamanho');
+      campo.classList.toggle('oculto', !(cat && cat.tem_tamanho));
+      select.innerHTML = '<option value="">—</option>';
+      (TAMANHOS[cat?.nome] || []).forEach(t => select.add(new Option(t, t)));
+    }
+    document.getElementById('categoria').addEventListener('change', atualizarTamanho);
+
+    // Pré-visualização da foto escolhida
+    document.getElementById('imagem').addEventListener('change', e => {
+      const ficheiro = e.target.files[0];
+      if (ficheiro) document.getElementById('previa').innerHTML = `<img src="${URL.createObjectURL(ficheiro)}" alt="">${seguro(ficheiro.name)}`;
+    });
+
+    // Envio: FormData permite mandar texto + ficheiro no mesmo pedido
+    document.getElementById('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      try {
+        const { id } = await api('/itens', { method: 'POST', body: new FormData(e.target) });
+        location.href = '/item.html?id=' + id;
+      } catch (erro) {
+        document.getElementById('aviso').innerHTML = `<div class="mensagem erro">${seguro(erro.message)}</div>`;
+      }
+    });
+  </script>
+</body>
+</html>

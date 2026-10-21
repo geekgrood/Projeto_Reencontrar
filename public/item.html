@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detalhe do objeto — Achados & Perdidos</title>
+  <link rel="stylesheet" href="/css/estilo.css">
+</head>
+<body>
+  <header class="topo" id="topo"></header>
+  <main class="contentor pagina">
+    <a href="/" class="botao secundario pequeno" style="margin-bottom:20px"><i data-lucide="arrow-left"></i> Voltar</a>
+    <div class="detalhe" id="detalhe"></div>
+  </main>
+
+  <script src="/vendor/lucide/lucide.min.js"></script>
+  <script src="/js/comum.js"></script>
+  <script>
+    desenharTopo('');
+    const id = new URLSearchParams(location.search).get('id');
+
+    async function carregar() {
+      const item = await api('/itens/' + id);
+      document.title = item.titulo + ' — Achados & Perdidos';
+      const foto = item.imagem_url ? `<img src="${seguro(item.imagem_url)}" alt="">` : icone(item.icone);
+      const maxPontos = Math.max(...item.correspondencias.map(c => c.pontuacao), 10);
+
+      document.getElementById('detalhe').innerHTML = `
+        <div class="foto ${item.tipo}">${foto}<span class="etiqueta ${item.tipo}">${item.tipo}</span></div>
+        <div>
+          <span class="chip">${seguro(item.categoria)}</span>
+          <h1 style="margin:10px 0 6px;font-size:30px;letter-spacing:-.02em">${seguro(item.titulo)}</h1>
+          <p class="subtitulo" style="margin:0">${seguro(item.descricao || 'Sem descrição.')}</p>
+          <ul class="lista-info">
+            <li>${icone('map-pin')}<b>Local</b>${seguro(item.local || '—')}</li>
+            <li>${icone('calendar')}<b>Data</b>${dataPT(item.data_ocorrencia)}</li>
+            ${item.tamanho ? `<li>${icone('ruler')}<b>Tamanho</b>${seguro(item.tamanho)}</li>` : ''}
+            ${item.cor ? `<li>${icone('palette')}<b>Cor</b>${seguro(item.cor)}</li>` : ''}
+            <li>${icone('user')}<b>Publicado</b>${seguro(item.publicado_por)}</li>
+          </ul>
+
+          ${item.tipo === 'encontrado' && item.estado !== 'devolvido' ? `
+          <div class="painel">
+            <h3 style="margin:0 0 4px">É teu?</h3>
+            <p class="subtitulo" style="margin:0 0 12px;font-size:14px">Descreve um pormenor que só o dono sabe. A secretaria vai confirmar.</p>
+            <form id="form-reclamar" style="display:grid;gap:10px">
+              <textarea id="mensagem" rows="3" placeholder="Ex.: tem as minhas iniciais por dentro da gola"></textarea>
+              <div id="aviso"></div>
+              <button class="botao" type="submit">${icone('hand')} Isto é meu!</button>
+            </form>
+          </div>` : ''}
+
+          ${item.correspondencias.length ? `
+          <h3 style="margin:24px 0 10px">Possíveis correspondências</h3>
+          ${item.correspondencias.map(c => `
+            <a class="correspondencia" href="/item.html?id=${c.id}">
+              <span class="mini ${c.tipo}">${icone(c.icone)}</span>
+              <span style="flex:1">
+                <strong style="font-size:14px">${seguro(c.titulo)}</strong><br>
+                <small style="color:var(--texto-2)">${c.tipo} · ${seguro(c.local || '')} · ${dataPT(c.data_ocorrencia)}</small>
+                <div class="barra-semelhanca"><i style="width:${Math.round(c.pontuacao / maxPontos * 100)}%"></i></div>
+              </span>
+            </a>`).join('')}` : ''}
+        </div>`;
+      desenharIcones();
+
+      document.getElementById('form-reclamar')?.addEventListener('submit', async e => {
+        e.preventDefault();
+        const aviso = document.getElementById('aviso');
+        if (!Sessao.obter()) { location.href = '/entrar.html?voltar=' + encodeURIComponent(location.pathname + location.search); return; }
+        try {
+          await api('/reclamacoes', { method: 'POST', body: JSON.stringify({ item_id: id, mensagem: document.getElementById('mensagem').value }) });
+          aviso.innerHTML = '<div class="mensagem sucesso">Pedido enviado! Vais ver a resposta em "Os meus pedidos".</div>';
+        } catch (erro) {
+          aviso.innerHTML = `<div class="mensagem erro">${seguro(erro.message)}</div>`;
+        }
+      });
+    }
+    carregar();
+  </script>
+</body>
+</html>

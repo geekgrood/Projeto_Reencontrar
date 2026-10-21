@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Os meus pedidos — Achados & Perdidos</title>
+  <link rel="stylesheet" href="/css/estilo.css">
+</head>
+<body>
+  <header class="topo" id="topo"></header>
+  <main class="contentor pagina" style="max-width:820px">
+    <h1>Os meus pedidos</h1>
+    <p class="subtitulo">Quando a secretaria aprovar um pedido, mostra este código (ou o QR Code) para levantar o objeto.</p>
+    <div id="lista" style="display:grid;gap:14px"></div>
+  </main>
+
+  <script src="/vendor/lucide/lucide.min.js"></script>
+  <script src="/js/comum.js"></script>
+  <script>
+    desenharTopo('conta');
+    if (!Sessao.obter()) location.href = '/entrar.html?voltar=/conta.html';
+
+    (async () => {
+      const pedidos = await api('/reclamacoes/minhas');
+      document.getElementById('lista').innerHTML = pedidos.length ? pedidos.map(p => `
+        <div class="painel" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+          <div style="flex:1;min-width:220px">
+            <span class="estado ${p.estado}">${p.estado}</span>
+            <h3 style="margin:10px 0 4px"><a href="/item.html?id=${p.item_id}">${seguro(p.titulo)}</a></h3>
+            ${p.estado === 'aprovada'
+              ? `<p style="margin:8px 0 0">Código de levantamento: <span class="codigo">${p.codigo_devolucao}</span></p>
+                 <p class="subtitulo" style="margin:6px 0 0;font-size:13px">Dirige-te à secretaria (9h–17h).</p>`
+              : `<p class="subtitulo" style="margin:0;font-size:14px">${p.estado === 'pendente' ? 'A secretaria vai analisar o teu pedido.' : p.estado === 'entregue' ? 'Objeto entregue. 🎉' : 'O pedido não foi aceite.'}</p>`}
+          </div>
+          ${p.qr ? `<div class="qr"><img src="${p.qr}" alt="QR Code de levantamento" width="150" height="150"></div>` : ''}
+        </div>`).join('') : '<div class="vazio">Ainda não fizeste nenhum pedido.</div>';
+      desenharIcones();
+    })();
+  </script>
+</body>
+</html>

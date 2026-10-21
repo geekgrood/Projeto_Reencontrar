@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secretaria — Achados & Perdidos</title>
+  <link rel="stylesheet" href="/css/estilo.css">
+</head>
+<body>
+  <header class="topo" id="topo"></header>
+  <main class="contentor pagina">
+    <h1>Painel da Secretaria</h1>
+    <p class="subtitulo">Valida os pedidos de devolução e confirma as entregas.</p>
+
+    <div class="numeros" style="margin-top:0;grid-template-columns:repeat(4,1fr)">
+      <div class="numero"><span class="bola" style="background:#fff4dc;color:#a46400"><i data-lucide="hourglass"></i></span><div><strong id="n-pendentes">–</strong><span>pedidos pendentes</span></div></div>
+      <div class="numero"><span class="bola" style="background:var(--coral-claro);color:var(--coral)"><i data-lucide="circle-help"></i></span><div><strong id="n-perdidos">–</strong><span>perdidos</span></div></div>
+      <div class="numero"><span class="bola" style="background:var(--verde-claro);color:var(--verde-escuro)"><i data-lucide="hand-heart"></i></span><div><strong id="n-encontrados">–</strong><span>encontrados</span></div></div>
+      <div class="numero"><span class="bola" style="background:#e6eef7;color:var(--azul-2)"><i data-lucide="party-popper"></i></span><div><strong id="n-devolvidos">–</strong><span>devolvidos</span></div></div>
+    </div>
+
+    <div class="grelha-painel">
+      <section class="painel">
+        <h2 style="margin:0 0 12px;font-size:18px">Pedidos "Isto é meu!"</h2>
+        <table class="tabela">
+          <thead><tr><th>Objeto</th><th>Aluno</th><th>Prova</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="pedidos"></tbody>
+        </table>
+      </section>
+
+      <div style="display:grid;gap:20px;align-content:start">
+        <section class="painel">
+          <h2 style="margin:0 0 4px;font-size:18px">Confirmar entrega</h2>
+          <p class="subtitulo" style="margin:0 0 12px;font-size:14px">Escreve o código do aluno ou lê o QR Code.</p>
+          <form id="form-entrega" style="display:flex;gap:8px">
+            <input id="codigo" placeholder="Ex.: K7Q2MZ" maxlength="40" style="text-transform:uppercase;letter-spacing:.1em;font-weight:700">
+            <button class="botao" type="submit">OK</button>
+          </form>
+          <div id="aviso-entrega" style="margin-top:10px"></div>
+        </section>
+        <section class="painel">
+          <h2 style="margin:0 0 14px;font-size:18px">Onde se perde mais</h2>
+          <div class="barras" id="locais"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="/vendor/lucide/lucide.min.js"></script>
+  <script src="/js/comum.js"></script>
+  <script>
+    desenharTopo('admin');
+    if (!Sessao.ehStaff()) location.href = '/';
+
+    async function carregarEstatisticas() {
+      const e = await api('/estatisticas');
+      for (const k of ['pendentes', 'perdidos', 'encontrados', 'devolvidos']) document.getElementById('n-' + k).textContent = e[k] ?? 0;
+      const max = Math.max(...e.porLocal.map(l => l.total), 1);
+      document.getElementById('locais').innerHTML = e.porLocal.map(l => `
+        <div><span>${seguro(l.nome)} · ${l.total}</span><span class="trilho"><i style="width:${l.total / max * 100}%"></i></span></div>`).join('');
+    }
+
+    async function carregarPedidos() {
+      const pedidos = await api('/reclamacoes');
+      document.getElementById('pedidos').innerHTML = pedidos.map(p => `
+        <tr>
+          <td><a href="/item.html?id=${p.item_id}"><strong>${seguro(p.titulo)}</strong></a></td>
+          <td>${seguro(p.aluno)}<br><small style="color:var(--texto-2)">${seguro(p.turma || '')}</small></td>
+          <td style="max-width:240px;color:var(--texto-2)">${seguro(p.mensagem)}</td>
+          <td><span class="estado ${p.estado}">${p.estado}</span>${p.codigo_devolucao ? `<br><span class="codigo" style="font-size:11px;display:inline-block;margin-top:6px">${p.codigo_devolucao}</span>` : ''}</td>
+          <td style="white-space:nowrap">${p.estado === 'pendente' ? `
+            <button class="botao pequeno" onclick="decidir(${p.id}, 'aprovada')">${icone('check')} Aprovar</button>
+            <button class="botao pequeno perigo" onclick="decidir(${p.id}, 'rejeitada')">${icone('x')}</button>` : ''}</td>
+        </tr>`).join('') || '<tr><td colspan="5">Sem pedidos.</td></tr>';
+      desenharIcones();
+    }
+
+    async function decidir(id, decisao) {
+      await api('/reclamacoes/' + id, { method: 'PATCH', body: JSON.stringify({ decisao }) });
+      carregarPedidos(); carregarEstatisticas();
+    }
+
+    document.getElementById('form-entrega').addEventListener('submit', async e => {
+      e.preventDefault();
+      const aviso = document.getElementById('aviso-entrega');
+      try {
+        await api('/reclamacoes/entregar', { method: 'POST', body: JSON.stringify({ codigo: document.getElementById('codigo').value }) });
+        aviso.innerHTML = '<div class="mensagem sucesso">Entrega confirmada! O objeto foi marcado como devolvido.</div>';
+        carregarPedidos(); carregarEstatisticas();
+      } catch (erro) {
+        aviso.innerHTML = `<div class="mensagem erro">${seguro(erro.message)}</div>`;
+      }
+    });
+
+    carregarEstatisticas(); carregarPedidos();
+  </script>
+</body>
+</html>
